@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import LandingPage from './components/LandingPage';
 import Inventory from './components/Inventory';
 import ShopManagement from './components/ShopManagement';
 import BarcodeScanner from './components/BarcodeScanner';
@@ -7,6 +8,7 @@ import Reports from './components/Reports';
 import Customers from './components/Customers';
 
 function App() {
+  const [showLanding, setShowLanding] = useState(true);
   const [activeTab, setActiveTab] = useState('inventory');
   const [scannedCode, setScannedCode] = useState('');
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -130,6 +132,10 @@ function App() {
         );
     }
   };
+
+  if (showLanding) {
+    return <LandingPage onEnter={() => setShowLanding(false)} />;
+  }
 
   return (
     <div className="min-h-screen fade-in">

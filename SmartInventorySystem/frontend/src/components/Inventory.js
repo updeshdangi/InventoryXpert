@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 function Inventory({ items: propItems }) {
   const [items, setItems] = useState(propItems || []);
@@ -198,32 +199,26 @@ function Inventory({ items: propItems }) {
   );
 
   const handleExport = () => {
-    const headers = ['Name', 'Description', 'Price', 'Colors', 'Sizes', 'Initial Qty', 'Sold Qty', 'Remaining', 'Category', 'Barcode'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredItems.map(item => [
-        `"${item.name}"`,
-        `"${item.description || ''}"`,
-        item.price,
-        `"${item.colors ? item.colors.join('; ') : ''}"`,
-        `"${item.sizes ? item.sizes.join('; ') : ''}"`,
-        item.initialQuantity,
-        item.soldQuantity,
-        item.remainingQuantity || item.quantity,
-        `"${item.category || ''}"`,
-        `"${item.barcode || ''}"`
-      ].join(','))
-    ].join('\n');
+    // Export all items, not just filtered ones
+    const exportData = items.map(item => ({
+      'Name': item.name,
+      'Description': item.description || '',
+      'Price': item.price,
+      'Colors': item.colors ? item.colors.join(', ') : '',
+      'Sizes': item.sizes ? item.sizes.join(', ') : '',
+      'Initial Qty': item.initialQuantity,
+      'Sold Qty': item.soldQuantity,
+      'Remaining': item.remainingQuantity || item.quantity,
+      'Category': item.category || '',
+      'Barcode': item.barcode || ''
+    }));
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'inventory_export.csv');
-    link.style.visibility('hidden');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory');
+
+    // Generate Excel file and trigger download
+    XLSX.writeFile(workbook, 'inventory_export.xlsx');
   };
 
   if (loading) {

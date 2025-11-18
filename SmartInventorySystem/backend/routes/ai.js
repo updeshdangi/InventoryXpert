@@ -60,17 +60,20 @@ router.get('/reorder-alerts', async (req, res) => {
   try {
     // First get current inventory data
     const Item = require('../models/Item');
-    const inventory = await Item.find({}).select('_id name remainingQuantity reorderThreshold');
+    const inventory = await Item.find({}).select('_id name initialQuantity soldQuantity reorderThreshold');
 
-    // Mock response since AI service is not running
-    const alerts = inventory.filter(item => (item.remainingQuantity || 0) <= (item.reorderThreshold || 2)).map(item => ({
+    // Compute remaining quantity and filter items where remaining quantity is 5 or below
+    const alerts = inventory.map(item => ({
+      ...item,
+      remainingQuantity: item.initialQuantity - item.soldQuantity
+    })).filter(item => item.remainingQuantity <= 5).map(item => ({
       product_name: item.name,
-      current_stock: item.remainingQuantity || 0,
-      threshold: item.reorderThreshold || 2,
-      days_until_reorder: Math.max(0, Math.floor((item.remainingQuantity || 0) / 2)), // Mock calculation
-      recommended_order_quantity: Math.max(10, (item.reorderThreshold || 2) * 2),
-      risk_level: (item.remainingQuantity || 0) === 0 ? 'high' : 'medium',
-      alert_message: `Stock is low for ${item.name}. Consider reordering soon.`
+      current_stock: item.remainingQuantity,
+      threshold: 5, // Fixed threshold of 5
+      days_until_reorder: Math.max(0, Math.floor(item.remainingQuantity / 2)), // Mock calculation
+      recommended_order_quantity: Math.max(10, 5 * 2), // Based on threshold of 5
+      risk_level: item.remainingQuantity === 0 ? 'high' : item.remainingQuantity <= 2 ? 'medium' : 'low',
+      alert_message: `Stock is low for ${item.name}. Current stock: ${item.remainingQuantity}. Consider reordering soon.`
     }));
 
     res.json({
@@ -100,7 +103,7 @@ router.post('/send-reorder-email', async (req, res) => {
     const nodemailer = require('nodemailer');
 
     // Create transporter (you'll need to configure this with your email service)
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: 'gmail', // or your email service
       auth: {
         user: process.env.EMAIL_USER || 'your-email@gmail.com',
